@@ -1,0 +1,27 @@
+[package]
+name = "adv_random_wasm"
+version = "3.0.0"
+authors = ["Mark Davis <markeyd83@gmail.com>"]
+edition = "2021"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/mdavisJr/adv_random_wasm"
+description = "adv_random for JavaScript.  Create random numbers, passwords, or strings based on rules"
+#This crate is only built into the npm package.  It is not for crates.io.
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+#The npm version has the same major and minor version as the adv_random that it wraps
+adv_random = "~3.0"
+wasm-bindgen = "0.2"
+js-sys = "0.3"
+
+#rand gets its seed from getrandom, which needs this feature to use Crypto.getRandomValues
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+getrandom = { version = "0.4", features = ["wasm_js"] }
+
+[profile.release]
+opt-level = "s"
+lto = true
