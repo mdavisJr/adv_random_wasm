@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>adv-random: random numbers, passwords and strings from rules</title>
+    <meta name="description" content="adv-random is a JavaScript and TypeScript library for random numbers, passwords and strings that follow rules: ranges, no duplicates, odd/even counts, pools and sequences, with seeds and a fair mode. Try it in your browser.">
+    <link rel="canonical" href="https://mdavisjr.github.io/adv_random_wasm/">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="adv-random: random numbers, passwords and strings from rules">
+    <meta property="og:description" content="Random numbers, passwords and strings that follow rules, for Node and browsers. Seeds, a fair mode and TypeScript types.">
+    <meta property="og:url" content="https://mdavisjr.github.io/adv_random_wasm/">
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "SoftwareSourceCode",
+        "name": "adv-random",
+        "description": "Random numbers, passwords and strings from rules, with seeds, a fair mode and TypeScript types. Rust compiled to WebAssembly.",
+        "codeRepository": "https://github.com/mdavisJr/adv_random_wasm",
+        "programmingLanguage": ["JavaScript", "TypeScript", "Rust"],
+        "runtimePlatform": ["Node.js", "Web browser"],
+        "license": "https://opensource.org/licenses/MIT",
+        "author": { "@type": "Person", "name": "Mark Davis" }
+    }
+    </script>
+    <style>
+        :root {
+            --bg: #ffffff;
+            --text: #1b1d21;
+            --muted: #5b6270;
+            --card: #f5f6f8;
+            --border: #dfe2e7;
+            --accent: #2457d6;
+            --accent-text: #ffffff;
+            --code: #eef0f3;
+            --error: #b00020;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #14161a;
+                --text: #e7e9ee;
+                --muted: #a0a7b4;
+                --card: #1d2026;
+                --border: #2e333b;
+                --accent: #6d97ff;
+                --accent-text: #0d1117;
+                --code: #23272e;
+                --error: #ff7b8a;
+            }
+        }
+        * { box-sizing: border-box; }
+        body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+        main { max-width: 52rem; margin: 0 auto; padding: 2.5rem 1rem 4rem; }
+        h1 { font-size: 2.1rem; margin: 0 0 .25rem; }
+        h2 { font-size: 1.3rem; margin: 0 0 .5rem; }
+        p { margin: .5rem 0; }
+        a { color: var(--accent); }
+        .lead { color: var(--muted); font-size: 1.1rem; margin-bottom: 1.25rem; }
+        .links { display: flex; flex-wrap: wrap; gap: .5rem 1.25rem; margin: 1rem 0 2rem; }
+        pre, code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .9rem; }
+        pre { background: var(--code); padding: .9rem 1rem; border-radius: 8px; overflow-x: auto; margin: .75rem 0; }
+        code { background: var(--code); padding: .1rem .3rem; border-radius: 4px; }
+        pre code { background: none; padding: 0; }
+        section.demo { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; margin: 1.25rem 0; }
+        .controls { display: flex; flex-wrap: wrap; gap: .75rem 1.25rem; align-items: end; margin: .75rem 0; }
+        label { display: flex; flex-direction: column; font-size: .85rem; color: var(--muted); gap: .2rem; }
+        label.check { flex-direction: row; align-items: center; gap: .4rem; color: var(--text); font-size: .95rem; }
+        input[type=number] { width: 5.5rem; padding: .4rem .5rem; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font: inherit; }
+        button { padding: .5rem 1rem; border: 0; border-radius: 6px; background: var(--accent); color: var(--accent-text); font: inherit; font-weight: 600; cursor: pointer; }
+        button:disabled { opacity: .5; cursor: default; }
+        .output { font: 600 1.3rem/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; word-break: break-all; min-height: 1.8rem; margin: .5rem 0; }
+        .output.error { color: var(--error); font-size: 1rem; font-weight: 500; }
+        footer { color: var(--muted); font-size: .9rem; margin-top: 3rem; }
+    </style>
+</head>
+<body>
+<main>
+    <h1>adv-random</h1>
+    <p class="lead">Random numbers, passwords and strings that follow rules, for JavaScript and TypeScript, in Node and in browsers.</p>
+    <pre><code>npm install adv-random</code></pre>
+    <div class="links">
+        <a href="https://www.npmjs.com/package/adv-random">npm</a>
+        <a href="https://github.com/mdavisJr/adv_random_wasm">GitHub</a>
+        <a href="https://github.com/mdavisJr/adv_random_wasm#readme">Documentation</a>
+        <a href="https://crates.io/crates/adv_random">The Rust crate, adv_random</a>
+    </div>
+    <p>Every example below runs in your browser with the package from npm.  Rules like no duplicates, odd and even counts or at least 2 digits are given as settings, instead of being code you write, test and keep fair yourself.</p>
+
+    <section class="demo" id="password">
+        <h2>Password with rules</h2>
+        <p>Letters, digits and special characters in the counts you choose.  With <code>.uniform()</code> every password that fits is equally likely.</p>
+        <div class="controls">
+            <label>Letters <input type="number" id="pw-letters" value="10" min="0" max="52"></label>
+            <label>Digits <input type="number" id="pw-digits" value="4" min="0" max="10"></label>
+            <label>Special <input type="number" id="pw-special" value="2" min="0" max="8"></label>
+            <button data-run="password" disabled>Generate</button>
+        </div>
+        <div class="output" id="pw-output">Loading...</div>
+        <pre><code id="pw-code"></code></pre>
+    </section>
+
+    <section class="demo" id="lottery">
+        <h2>Lottery numbers</h2>
+        <p>Numbers with no duplicates and a mix of odd and even.  <code>AnyOf</code> takes either split, and <code>.uniform()</code> makes every ticket that fits equally likely.</p>
+        <div class="controls">
+            <label>How many <input type="number" id="lot-count" value="5" min="2" max="10"></label>
+            <label>From 1 to <input type="number" id="lot-max" value="39" min="10" max="99"></label>
+            <label class="check"><input type="checkbox" id="lot-uniform" checked> Every ticket equally likely</label>
+            <button data-run="lottery" disabled>Generate</button>
+        </div>
+        <div class="output" id="lot-output">Loading...</div>
+        <pre><code id="lot-code"></code></pre>
+    </section>
+
+    <section class="demo" id="seeded">
+        <h2>The same numbers every time</h2>
+        <p><code>SeededRandom</code> gives the same numbers for the same seed, here and in the Rust crate.  Change the seed to get different ones.</p>
+        <div class="controls">
+            <label>Seed <input type="number" id="seed-value" value="42" min="0"></label>
+            <button data-run="seeded" disabled>Generate</button>
+        </div>
+        <div class="output" id="seed-output">Loading...</div>
+        <pre><code id="seed-code"></code></pre>
+    </section>
+
+    <section class="demo" id="spread">
+        <h2>Counts in any order</h2>
+        <p>5 numbers from 1 to 39 where 4 come from one third of the numbers, 1 from another third, and none from the third that is left.</p>
+        <div class="controls">
+            <button data-run="spread" disabled>Generate</button>
+        </div>
+        <div class="output" id="spread-output">Loading...</div>
+        <pre><code id="spread-code">Settings.builder(5)
+    .range(1, 39)
+    .noDuplicates()
+    .rule(NumberPool.new().spread([4, 1, 0]).over(range(1, 13)).over(range(14, 26)).over(range(27, 39)))
+    .build()
+    .generate()
+    .numbers();</code></pre>
+    </section>
+
+    <footer>
+        adv-random is MIT or Apache-2.0 licensed.  It is the Rust crate adv_random compiled to WebAssembly, with TypeScript types.
+    </footer>
+</main>
+
+<script type="module">
+    //The package comes from npm through the jsDelivr CDN, so there is nothing to install and no bundler
+    import init, { AnyOf, NumberPool, OddEven, SeededRandom, Settings, range } from 'https://cdn.jsdelivr.net/npm/adv-random@3.1/web/adv_random.js';
+
+    const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+    const DIGITS = '0123456789';
+    const SPECIAL = '!@#$%^&*';
+    const $ = id => document.getElementById(id);
+    //the number in a box, kept from min to max.  The box shows the number that is used.
+    function whole(id, min, max) {
+        const value = Math.min(max, Math.max(min, Math.trunc(Number($(id).value)) || 0));
+        $(id).value = value;
+        return value;
+    }
+
+    const demos = {
+        password() {
+            const letters = whole('pw-letters', 0, 52), digits = whole('pw-digits', 0, 10), special = whole('pw-special', 0, 8);
+            const count = letters + digits + special;
+            $('pw-code').textContent = `Settings.builder(${count})
+    .rule(NumberPool.new()
+        .exactly(${letters}, '${LETTERS}')
+        .exactly(${digits}, '${DIGITS}')
+        .exactly(${special}, '${SPECIAL}'))
+    .uniform()
+    .build()
+    .generate()
+    .string();`;
+            if (count === 0) {
+                return '';
+            }
+            return Settings.builder(count)
+                .rule(NumberPool.new().exactly(letters, LETTERS).exactly(digits, DIGITS).exactly(special, SPECIAL))
+                .uniform()
+                .build()
+                .generate()
+                .string();
+        },
+
+        lottery() {
+            const count = whole('lot-count', 2, 10), max = whole('lot-max', count * 2, 99);
+            const odd = Math.ceil(count / 2), even = count - odd;
+            const uniform = $('lot-uniform').checked;
+            $('lot-code').textContent = `Settings.builder(${count})
+    .range(1, ${max})
+    .noDuplicates()
+    .rule(AnyOf.new()
+        .rule(OddEven.new().odd(${odd}).even(${even}))
+        .rule(OddEven.new().odd(${even}).even(${odd})))${uniform ? '\n    .uniform()' : ''}
+    .build()
+    .generate()
+    .numbers();`;
+            let builder = Settings.builder(count)
+                .range(1, max)
+                .noDuplicates()
+                .rule(AnyOf.new().rule(OddEven.new().odd(odd).even(even)).rule(OddEven.new().odd(even).even(odd)));
+            if (uniform) {
+                builder = builder.uniform();
+            }
+            return builder.build().generate().numbers().sort((a, b) => a - b).join('  ');
+        },
+
+        seeded() {
+            const seed = whole('seed-value', 0, Number.MAX_SAFE_INTEGER);
+            $('seed-code').textContent = `Settings.builder(10)
+    .range(1, 20)
+    .random(SeededRandom.new(${seed}))
+    .build()
+    .generate()
+    .numbers();`;
+            return Settings.builder(10).range(1, 20).random(SeededRandom.new(seed)).build().generate().numbers().join(', ');
+        },
+
+        spread() {
+            return Settings.builder(5)
+                .range(1, 39)
+                .noDuplicates()
+                .rule(NumberPool.new().spread([4, 1, 0]).over(range(1, 13)).over(range(14, 26)).over(range(27, 39)))
+                .build()
+                .generate()
+                .numbers()
+                .sort((a, b) => a - b)
+                .join('  ');
+        }
+    };
+    const outputs = { password: 'pw-output', lottery: 'lot-output', seeded: 'seed-output', spread: 'spread-output' };
+
+    function run(name) {
+        const output = $(outputs[name]);
+        try {
+            output.textContent = demos[name]();
+            output.classList.remove('error');
+        } catch (e) {
+            output.textContent = e?.message ?? String(e);
+            output.classList.add('error');
+        }
+    }
+
+    try {
+        //loads the WebAssembly file.  It has to finish before anything else is used.
+        await init();
+        for (const button of document.querySelectorAll('button[data-run]')) {
+            button.disabled = false;
+            button.addEventListener('click', () => run(button.dataset.run));
+        }
+        for (const input of document.querySelectorAll('input')) {
+            input.addEventListener('change', () => run(input.closest('section').id));
+        }
+        Object.keys(demos).forEach(run);
+        window.__demoReady = true;
+    } catch (e) {
+        for (const id of Object.values(outputs)) {
+            $(id).textContent = `Could not load adv-random: ${e?.message ?? e}`;
+            $(id).classList.add('error');
+        }
+    }
+</script>
+</body>
+</html>
