@@ -1,0 +1,15 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>adv-random without a bundler</title>
+<!-- The build for browsers without a bundler, the same way the README says to use it -->
+<script type="module">
+    import init, * as advRandom from '/node_modules/adv-random/web/adv_random.js';
+    import { runChecks } from './checks.js';
+
+    try {
+        await init();
+        window.__results = runChecks(advRandom);
+    } catch (e) {
+        window.__results = { load: `threw ${e?.message ?? e}` };
+    }
+</script>

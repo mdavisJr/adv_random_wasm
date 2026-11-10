@@ -528,5 +528,12 @@ npm test
 ```
 `npm run build` creates the npm package in `pkg`, with one build for Node, one for bundlers and one for browsers without a bundler.  `npm install` links `pkg` into `node_modules` so the tests can import it by its name.  It only has to be run one time.  `pkg` is the folder to publish.
 
+`npm test` runs the tests in Node.  The tests for browsers are run on their own, because they need browsers that Playwright installs.
+```text
+npx playwright install chromium webkit firefox
+npm run test:browser
+```
+`npx playwright install` only has to be run one time.  `npm run test:browser` loads the package in Chromium, in WebKit, which Safari uses, and in Firefox.  Every browser loads it without a bundler, with Vite and with webpack.  To use only some of the browsers, name them: `npm run test:browser -- chromium webkit`.
+
 # License
 MIT OR Apache-2.0
