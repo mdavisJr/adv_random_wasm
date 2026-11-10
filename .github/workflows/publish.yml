@@ -1,0 +1,66 @@
+# Publishes adv-random to npm when a version tag (v3.1.0, ...) is pushed, or by
+# hand from the Actions tab with the tag to publish. Uses npm's trusted
+# publishing: GitHub asks npm for a short-lived token, so no token is kept in
+# the repository, and npm adds provenance saying which commit and workflow
+# built the package. The tag must match the version in Cargo.toml, and every
+# test runs before anything is published.
+name: Publish
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to publish, such as v3.1.0"
+        required: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  publish:
+    name: Publish to npm
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      # Trusted publishing needs npm 11.5.1 or later.
+      - run: npm install -g npm@11
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-pack@0.15.1
+      - name: Check the tag matches Cargo.toml
+        env:
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          VERSION="$(sed -n 's/^version *= *"\(.*\)"/\1/p' Cargo.toml | head -1)"
+          if [ "$TAG" != "v$VERSION" ]; then
+            echo "Tag $TAG does not match version $VERSION in Cargo.toml"
+            exit 1
+          fi
+      # Before npm ci: the adv-random dev dependency is the pkg folder.
+      - name: Build
+        run: npm run build
+      - run: npm ci
+      - name: Test in Node, with the README examples
+        run: npm test
+      - name: Install the browsers
+        run: npx playwright install --with-deps chromium webkit firefox
+      - name: Test in the browsers
+        run: npm run test:browser
+      - name: Publish
+        run: npm publish --access public
+        working-directory: pkg

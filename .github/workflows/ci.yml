@@ -1,0 +1,38 @@
+# Builds the npm package and tests it on every push and pull request: in Node,
+# with every README example, and in Chromium, WebKit and Firefox without a
+# bundler, with Vite and with webpack.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    name: Build and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-pack@0.15.1
+      # Before npm ci: the adv-random dev dependency is the pkg folder.
+      - name: Build
+        run: npm run build
+      - run: npm ci
+      - name: Test in Node, with the README examples
+        run: npm test
+      - name: Install the browsers
+        run: npx playwright install --with-deps chromium webkit firefox
+      - name: Test in the browsers
+        run: npm run test:browser
