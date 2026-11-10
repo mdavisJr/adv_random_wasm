@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { test } from 'node:test';
 import {
-    DefaultRandom, ExcludeNumberSets, NoDuplicate, NumberPool, NumberPoolByIndex, NumberRange, NumberSpace, OddEven,
+    AnyOf, DefaultRandom, ExcludeNumberSets, NoDuplicate, NumberPool, NumberPoolByIndex, NumberRange, NumberSpace, OddEven,
     OddEvenByIndex, OperatorType, ProcessNumberSpaceItems, RandomError, RandomErrorType, RangeInclusive, SeededRandom,
     Sequential, Settings, range
 } from 'adv-random';
@@ -247,6 +247,69 @@ test('number space', () => {
     assert.ok(spaces(settings.generate().numbers()).every(x => x === 3));
 });
 
+test('every result is equally likely with uniform', () => {
+    //2 numbers from 1 to 4 with no duplicates are 12 tickets, so each one comes up about 1,000 times in 12,000
+    const settings = Settings.builder(2).range(1, 4).noDuplicates().uniform().random(SeededRandom.new(1)).build();
+    assert.equal(settings.uniform(), true);
+    assert.equal(settings.maxDraws(), 1000000);
+    const counts = new Map();
+    for (let i = 0; i < 12000; i++) {
+        const key = settings.generate().numbers().join(',');
+        counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    assert.equal(counts.size, 12);
+    for (const [ticket, count] of counts) {
+        assert.ok(count > 850 && count < 1150, `${ticket} came up ${count} times`);
+    }
+
+    generateMany(Settings.builder(5).range(1, 39).noDuplicates().oddEven(3, 2).uniform().build(), randomNumbers => {
+        const numbers = randomNumbers.numbers();
+        assertInRange(numbers, 1, 39);
+        assert.equal(new Set(numbers).size, 5);
+        assert.equal(numbers.filter(x => x % 2 === 1).length, 3);
+    });
+    assert.equal(Settings.builder(5).range(1, 39).build().uniform(), false);
+});
+
+test('uniform settings that can not work, and maxDraws', () => {
+    //every number needs a range or a pool
+    throwsRandomError(() => Settings.builder(3).uniform().build().generate(), RandomErrorType.BadRequest);
+    assert.ok(Settings.builder(3).range(1, 9).uniform().maxDraws(0).build().errors().length > 0);
+    //10 numbers from 1 to 20 that are all odd and all even
+    const settings = Settings.builder(10).range(1, 20).oddEven(10, 0).rule(OddEven.new().odd(0).even(10)).uniform().maxDraws(100).build();
+    assert.equal(settings.maxDraws(), 100);
+    throwsRandomError(() => settings.generate(), RandomErrorType.Failed);
+    assert.throws(() => Settings.builder(3).maxDraws(-1), /maxDraws: -1 must be a whole number/);
+});
+
+test('any of its rules', () => {
+    const allOddOrAllEven = AnyOf.new().rule(OddEven.new().odd(5).even(0)).rule(new OddEven().odd(0).even(5));
+    for (const settings of [Settings.builder(5).range(1, 39).noDuplicates().rule(allOddOrAllEven).uniform().build(), Settings.builder(5).range(1, 39).noDuplicates().rule(allOddOrAllEven).build()]) {
+        generateMany(settings, randomNumbers => {
+            const odd = randomNumbers.numbers().filter(x => x % 2 === 1).length;
+            assert.ok(odd === 0 || odd === 5, `${randomNumbers.numbers()} are not all odd or all even`);
+        });
+    }
+    assert.match(String(allOddOrAllEven), /AnyOf/);
+    assert.throws(() => Settings.builder(5).exclude(allOddOrAllEven), /AnyOf can not be used with exclude/);
+    assert.throws(() => AnyOf.new().rule(5), /rule must be one of the rules/);
+});
+
+test('number pool counts in any order with spread and over', () => {
+    const settings = Settings.builder(5)
+        .range(1, 39)
+        .noDuplicates()
+        .rule(NumberPool.new().spread([4, 1, 0]).over(range(1, 13)).over(range(14, 26)).over(range(27, 39)))
+        .build();
+    generateMany(settings, randomNumbers => {
+        const numbers = randomNumbers.numbers();
+        const counts = [[1, 13], [14, 26], [27, 39]].map(([min, max]) => numbers.filter(x => x >= min && x <= max).length);
+        assert.deepEqual(counts.sort(), [0, 1, 4]);
+    });
+    assert.match(Settings.builder(5).range(1, 39).rule(NumberPool.new().over(range(1, 13))).build().errors()[0], /over can only be used after spread/);
+    assert.ok(Settings.builder(5).range(1, 39).rule(NumberPool.new().spread([4, 1]).over(range(1, 13))).build().errors().length > 0);
+});
+
 test('the same seed gives the same numbers', () => {
     const settings = seed => Settings.builder(10).range(1, 20).random(SeededRandom.new(seed)).build();
     //these are the numbers that adv_random 3.0.0 gives in Rust for the same settings and seed
@@ -263,6 +326,25 @@ test('the same seed gives the same numbers', () => {
         .random(SeededRandom.new(2026))
         .build();
     assert.deepEqual(withRules.generate().numbers(), [25, 2, 26, 29, 17]);
+
+    //and with the rules and the mode that adv_random 3.1.0 added
+    const uniform = Settings.builder(5).range(1, 39).noDuplicates().oddEven(3, 2).uniform().random(SeededRandom.new(2026)).build();
+    assert.deepEqual(uniform.generate().numbers(), [5, 32, 27, 14, 25]);
+    const anyOf = Settings.builder(5)
+        .range(1, 39)
+        .noDuplicates()
+        .rule(AnyOf.new().rule(OddEven.new().odd(5).even(0)).rule(OddEven.new().odd(0).even(5)))
+        .uniform()
+        .random(SeededRandom.new(7))
+        .build();
+    assert.deepEqual(anyOf.generate().numbers(), [29, 11, 19, 5, 15]);
+    const spread = Settings.builder(5)
+        .range(1, 39)
+        .noDuplicates()
+        .rule(NumberPool.new().spread([4, 1, 0]).over(range(1, 13)).over(range(14, 26)).over(range(27, 39)))
+        .random(SeededRandom.new(11))
+        .build();
+    assert.deepEqual(spread.generate().numbers(), [31, 21, 36, 38, 37]);
 
     const string = seed => Settings.builder(20).rule(NumberPool.alphanumeric(20).withSpecialCharacters()).random(SeededRandom.new(seed)).build().generate().shuffledString();
     assert.equal(string(7), string(7));

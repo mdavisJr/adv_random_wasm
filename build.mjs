@@ -33,10 +33,15 @@ for (const target of targets) {
 const packageJson = {
     name: 'adv-random',
     version,
-    description: 'Create random numbers, passwords, or strings based on rules',
-    keywords: ['rand', 'random', 'rule', 'string', 'password', 'wasm'],
+    description: 'Random numbers, passwords and strings from rules (ranges, no duplicates, odd/even, pools, sequences), with seeds, a fair mode and TypeScript types.  Rust compiled to WebAssembly.',
+    keywords: [
+        'random', 'random-number-generator', 'rng', 'seeded-random', 'seed', 'password-generator', 'random-string',
+        'random-password', 'unique-random', 'lottery', 'dice', 'webassembly', 'wasm', 'typescript', 'rust'
+    ],
     author: 'Mark Davis <markeyd83@gmail.com>',
     license: 'MIT OR Apache-2.0',
+    homepage: 'https://mdavisjr.github.io/adv_random_wasm/',
+    bugs: { url: 'https://github.com/mdavisJr/adv_random_wasm/issues' },
     repository: { type: 'git', url: 'git+https://github.com/mdavisJr/adv_random_wasm.git' },
     main: `nodejs/${outName}.js`,
     module: `bundler/${outName}.js`,

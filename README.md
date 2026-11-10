@@ -1,9 +1,39 @@
 # adv-random
-Create random numbers, passwords, or strings based on rules.  This is the JavaScript version of the Rust crate [adv_random](https://crates.io/crates/adv_random).  It is the same Rust code, built to WebAssembly, and it is used with almost the same syntax.  It comes with TypeScript types.
+[![npm](https://img.shields.io/npm/v/adv-random.svg)](https://www.npmjs.com/package/adv-random)
+[![CI](https://github.com/mdavisJr/adv_random_wasm/actions/workflows/ci.yml/badge.svg)](https://github.com/mdavisJr/adv_random_wasm/actions/workflows/ci.yml)
+[![license](https://img.shields.io/npm/l/adv-random.svg)](#license)
+[![types](https://img.shields.io/npm/types/adv-random.svg)](https://www.npmjs.com/package/adv-random)
+
+Random numbers, passwords and strings that follow rules, for Node and browsers.  **[Try it in your browser](https://mdavisjr.github.io/adv_random_wasm/)**.
+
+```js
+import { NumberPool, Settings } from 'adv-random';
+
+//a 16 character password with 10 letters, 4 digits and 2 special characters, every one equally likely
+const password = Settings.builder(16)
+    .rule(NumberPool.new()
+        .exactly(10, 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz')
+        .exactly(4, '0123456789')
+        .exactly(2, '!@#$%^&*'))
+    .uniform()
+    .build()
+    .generate();
+console.log(password.string());
+```
+#### Output: c11y#f1VE%ej8iPn
+
+- **Rules:** ranges, no duplicates, odd and even counts, numbers from pools, runs of numbers in a row, the spaces between numbers, numbers to leave out, and one of several rules with `AnyOf`.
+- **Every result equally likely** with `.uniform()`, for games, lotteries and statistics: see [Every Result Equally Likely](#every-result-equally-likely).
+- **Passwords and strings** from letters, digits and special characters.
+- **The same numbers every time** with `SeededRandom`, in JavaScript and in Rust, or your own random number generator.
+- **TypeScript types**, and it works in Node with `import` and `require`, and in browsers with or without a bundler.
+- Settings are checked before anything is generated, and an error says which rule could not work.
+
+`Math.random()` gives one number at a time, so rules like "no duplicates", "3 odd and 2 even" or "at least 2 digits" are code you write and test yourself, and a loop that throws away what doesn't fit is easy to get subtly unfair.  adv-random takes the rules and does that part.
+
+This is the JavaScript version of the Rust crate [adv_random](https://crates.io/crates/adv_random).  It is the same Rust code, built to WebAssembly, and it is used with almost the same syntax.  The version says which adv_random it is built from: adv-random 3.1.x is built from adv_random 3.1.
 
 Please see examples of using rules below.  The package can handle more combinations of rules than what is shown below.
-
-The version says which adv_random it is built from.  adv-random 3.0.x is built from adv_random 3.0.
 
 # Getting Started
 Add adv-random to your project.
@@ -51,13 +81,14 @@ Every example in this file is run by `npm test`, so they all work with the curre
 | `1..=10` | `range(1, 10)` |
 | `OperatorType::Lt(3)` | `OperatorType.Lt(3)` |
 | `generate()` returns a `Result` | `generate()` returns the numbers and throws a `RandomError` |
+| `.max_draws(n)` | `.maxDraws(n)` |
 | Numbers are `usize` | Numbers are whole numbers from 0 to 4294967295 |
 
 A method never changes the object it is called on.  It returns a new object, so use what it returns.  A rule, a builder or a random number generator can be used as many times as you want.
 
 A number that is not a whole number from 0 to 4294967295, or a value of the wrong type, throws an `Error` right away.
 
-Custom rules can not be written in JavaScript yet.
+Custom rules can not be written in JavaScript yet, so `uniform_check`, which checks a custom rule, is not in the package.  `AnyOf` can only be used with `rule`, not with `exclude`, the same as in Rust.
 
 # Settings
 `Settings.builder(count)` starts the settings for `count` random numbers.
@@ -69,6 +100,8 @@ Custom rules can not be written in JavaScript yet.
 | `.range(min, max)` | Every number is from min to max.  The same as `.rule(NumberRange.all(min, max))` |
 | `.noDuplicates()` | No number is there more than once.  The same as `.rule(NoDuplicate)` |
 | `.oddEven(odd, even)` | This many odd numbers and this many even numbers.  The same as `.rule(OddEven.new().odd(odd).even(even))` |
+| `.uniform()` | Every result that matches the rules is equally likely: see [Every Result Equally Likely](#every-result-equally-likely) |
+| `.maxDraws(n)` | With `.uniform()`, how many tickets to start before giving up |
 | `.random(generator)` | Uses your random number generator |
 | `.build()` | Returns the `Settings` |
 
@@ -167,6 +200,49 @@ console.log(randomNumbers.numbers());
 #### Output: [3, 6, 9, 12, 15]
 An error that your generator throws is thrown by `build`, `generate` or `shuffledString`.
 
+# Every Result Equally Likely
+By default the rules steer the numbers: a rule like `OddEven` picks odd or even numbers so the result fits quickly.  That finds numbers that match, but some matching results come up more often than others, depending on how they were put together.
+
+With `.uniform()`, every result that matches the rules is equally likely.  The numbers are drawn at random, one at a time, without the rules steering them.  As soon as a rule says the numbers so far can not match, they are thrown away and the next ticket starts from scratch, and a full ticket is kept only if every rule matches.  Use it when the results have to be fair, such as for games, lotteries or statistics.
+```js
+import { AnyOf, OddEven, Settings } from 'adv-random';
+
+//5 numbers from 1 to 39 with no duplicates, either 3 odd and 2 even or 2 odd and 3 even.  Every 5 numbers
+//like that are equally likely.
+const randomNumbers = Settings.builder(5)
+    .range(1, 39)
+    .noDuplicates()
+    .rule(AnyOf.new().rule(OddEven.new().odd(3).even(2)).rule(OddEven.new().odd(2).even(3)))
+    .uniform()
+    .build()
+    .generate();
+console.log(randomNumbers.numbers());
+```
+#### Output: [7, 26, 23, 10, 11]
+`AnyOf` matches when any one of its rules matches.  It works without `.uniform()` too.
+
+Pools can say where the numbers are drawn from.  Every 15 characters with 11 capital letters, 2 of `365` and 2 of `#*` are equally likely here.
+```js
+import { NumberPool, Settings } from 'adv-random';
+
+const randomNumbers = Settings.builder(15)
+    .rule(NumberPool.new()
+        .exactly(11, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ')
+        .exactly(2, '365')
+        .exactly(2, '#*'))
+    .uniform()
+    .build()
+    .generate();
+console.log(randomNumbers.string());
+```
+#### Output: W#VCUE3FXSNF*6Y
+
+Things to know about `.uniform()`:
+- Every number needs a range, such as `.range(min, max)` or `NumberRange.new().at(...)`, or pools that every number comes from.  `NumberPoolByIndex` gives each index's pool.  A `NumberPool` whose pools share no number, and need all of the numbers between them, gives every number's pools, like the password at the top.  Other pools decide whether the numbers are kept, not which numbers are drawn.
+- Rules that only a few results match take many tickets.  When none matches in `.maxDraws(n)`, 1,000,000 by default, `generate` throws a `Failed` error.  `n` has to be at least 1.  The error's report keeps the first 10,000 log entries, and after that ends with how many times each rule stopped a ticket, which says which rule is the hard one.
+- `Sequential` and `NumberSpace` are checked on full tickets only, which is just as fair but slower.
+- `settings.uniform()` and `settings.maxDraws()` say how the settings were built.
+
 # Examples
 ### Create 10 random numbers between 1 and 20 (min and max numbers are inclusive)
 ```js
@@ -252,6 +328,21 @@ console.log(randomNumbers.numbers());
 #### Output: [1, 4, 20, 21, 47, 90, 95, 62, 29, 19]
 A pool is a list of numbers like `[1, 4]`, a range like `range(1, 10)`, or the characters of a string like `"ABC"`.  A number that is picked twice counts twice, so `exactly(2, [1, 4])` means both 1 and 4 because there are no duplicates.  `NumberPool` also has `atMost` and `between`.
 
+---
+### Create 5 numbers between 1 and 39 with no duplicates where 4 are from one third of the numbers, 1 is from another third, and none are from the third that is left
+`spread` gives counts that can be in any order, and `over` gives one pool for every count.  The 4 numbers can come from any one of the three pools.
+```js
+import { NumberPool, Settings, range } from 'adv-random';
+
+const randomNumbers = Settings.builder(5)
+    .range(1, 39)
+    .noDuplicates()
+    .rule(NumberPool.new().spread([4, 1, 0]).over(range(1, 13)).over(range(14, 26)).over(range(27, 39)))
+    .build()
+    .generate();
+console.log(randomNumbers.numbers());
+```
+#### Output: [16, 25, 20, 32, 18]
 ---
 ### Create 5 numbers between 1 and 10 with no duplicates that are Odd, Even, Odd, Even, and Odd
 ```js

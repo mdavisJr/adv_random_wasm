@@ -4,16 +4,16 @@ version = 4
 
 [[package]]
 name = "adv_random"
-version = "3.0.0"
+version = "3.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5228511c4cde44204ccfbc5f63a4573e618bf9b985cef8bd732a63370cc52808"
+checksum = "dfd2cf4e6359116ca23ee6c7cf660e369e3c53e867e36efee0c2b50697a5afc2"
 dependencies = [
  "rand",
 ]
 
 [[package]]
 name = "adv_random_wasm"
-version = "3.0.0"
+version = "3.1.0"
 dependencies = [
  "adv_random",
  "getrandom",

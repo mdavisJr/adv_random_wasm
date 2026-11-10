@@ -3,25 +3,30 @@ use adv_random::prelude as adv;
 use wasm_bindgen::convert::TryFromJsValue;
 use wasm_bindgen::prelude::*;
 
-//A rule that was taken out of its JavaScript object.  Every rule can be used with rule and with exclude.
+//A rule that was taken out of its JavaScript object.  Every rule but AnyOf can be used with rule and with exclude.
 #[doc(hidden)]
 #[wasm_bindgen(js_name = "__RuleHandle", skip_typescript)]
 pub struct RuleHandle {
     rule: Box<dyn adv::RuleTrait>,
-    exclude_rule: Box<dyn adv::ExcludeRuleTrait>,
+    exclude_rule: Option<Box<dyn adv::ExcludeRuleTrait>>,
 }
 
 impl RuleHandle {
     fn new(rule: impl adv::RuleTrait + adv::ExcludeRuleTrait + Clone + 'static) -> RuleHandle {
-        return RuleHandle { rule: Box::new(rule.clone()), exclude_rule: Box::new(rule) };
+        return RuleHandle { rule: Box::new(rule.clone()), exclude_rule: Some(Box::new(rule)) };
+    }
+
+    fn rule_only(rule: impl adv::RuleTrait + 'static) -> RuleHandle {
+        return RuleHandle { rule: Box::new(rule), exclude_rule: None };
     }
 
     pub fn into_rule(self) -> Box<dyn adv::RuleTrait> {
         return self.rule;
     }
 
-    pub fn into_exclude_rule(self) -> Box<dyn adv::ExcludeRuleTrait> {
-        return self.exclude_rule;
+    pub fn into_exclude_rule(self) -> Result<Box<dyn adv::ExcludeRuleTrait>, JsError> {
+        let name = self.rule.name();
+        return self.exclude_rule.ok_or_else(|| JsError::new(&format!("{} can not be used with exclude", name)));
     }
 }
 
@@ -38,12 +43,15 @@ pub fn rule_from_js(value: &JsValue) -> Result<RuleHandle, JsError> {
 //The methods that every rule has
 macro_rules! rule_class {
     ($name:ident) => {
+        rule_class!($name, new);
+    };
+    ($name:ident, $handle:ident) => {
         #[wasm_bindgen]
         impl $name {
             #[doc(hidden)]
             #[wasm_bindgen(js_name = "__handle", skip_typescript)]
             pub fn handle(&self) -> RuleHandle {
-                return RuleHandle::new(self.0.clone());
+                return RuleHandle::$handle(self.0.clone());
             }
 
             #[wasm_bindgen(js_name = "toString")]
@@ -204,6 +212,18 @@ impl NumberPool {
     /// Adds a pool with a key, and any type for how many numbers come from it
     pub fn item(&self, key: &str, #[wasm_bindgen(unchecked_param_type = "Pool")] pool: &JsValue, needs: &OperatorType) -> Result<NumberPool, JsError> {
         return Ok(NumberPool(self.0.clone().item(key, pool_from_js(pool)?, needs.0)));
+    }
+
+    /// Starts counts that are spread over pools in any order.  Give the pools with over, one for every count.
+    /// spread([4, 1, 0]).over(range(1, 13)).over(range(14, 26)).over(range(27, 39)) is 4 numbers from one of the
+    /// three pools, 1 number from another one, and none from the pool that is left.
+    pub fn spread(&self, #[wasm_bindgen(unchecked_param_type = "ArrayLike<number> | Iterable<number>")] counts: &JsValue) -> Result<NumberPool, JsError> {
+        return Ok(NumberPool(self.0.clone().spread(numbers_from_js(counts, "counts")?)));
+    }
+
+    /// Adds a pool to the counts that the last call to spread started
+    pub fn over(&self, #[wasm_bindgen(unchecked_param_type = "Pool")] pool: &JsValue) -> Result<NumberPool, JsError> {
+        return Ok(NumberPool(self.0.clone().over(pool_from_js(pool)?)));
     }
 }
 
@@ -435,5 +455,30 @@ impl ExcludeNumberSets {
     #[wasm_bindgen(js_name = "stringEach")]
     pub fn string_each(&self, strings: Vec<String>) -> ExcludeNumberSets {
         return ExcludeNumberSets(self.0.clone().string_each(strings));
+    }
+}
+
+/// Matches when any one of its rules matches, such as one of a few odd/even counts.  It can only be used with
+/// SettingsBuilder.rule, not with exclude, and it suits uniform settings best.
+#[wasm_bindgen]
+pub struct AnyOf(adv::AnyOf);
+rule_class!(AnyOf, rule_only);
+
+#[wasm_bindgen]
+impl AnyOf {
+    /// No rules yet.  Add them with rule.
+    #[wasm_bindgen(constructor)]
+    pub fn constructor() -> AnyOf {
+        return AnyOf::new();
+    }
+
+    /// No rules yet.  Add them with rule.
+    pub fn new() -> AnyOf {
+        return AnyOf(adv::AnyOf::new());
+    }
+
+    /// Adds a rule that can match
+    pub fn rule(&self, #[wasm_bindgen(unchecked_param_type = "Rule")] rule: &JsValue) -> Result<AnyOf, JsError> {
+        return Ok(AnyOf(self.0.clone().boxed_rules([rule_from_js(rule)?.into_rule()])));
     }
 }

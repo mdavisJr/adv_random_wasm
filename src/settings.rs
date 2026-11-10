@@ -42,6 +42,17 @@ impl Settings {
         return self.settings.count();
     }
 
+    /// True when every result that matches the rules is equally likely: see SettingsBuilder.uniform
+    pub fn uniform(&self) -> bool {
+        return self.settings.uniform();
+    }
+
+    /// With uniform, how many tickets are started before giving up
+    #[wasm_bindgen(js_name = "maxDraws")]
+    pub fn max_draws(&self) -> usize {
+        return self.settings.max_draws();
+    }
+
     #[wasm_bindgen(js_name = "toString")]
     pub fn to_string_js(&self) -> String {
         return format!("{:?}", self.settings);
@@ -70,7 +81,7 @@ impl SettingsBuilder {
 
     /// Adds a rule that the random numbers can not match
     pub fn exclude(&self, #[wasm_bindgen(unchecked_param_type = "Rule")] rule: &JsValue) -> Result<SettingsBuilder, JsError> {
-        return Ok(self.with(self.builder.clone().boxed_excludes([rule_from_js(rule)?.into_exclude_rule()])));
+        return Ok(self.with(self.builder.clone().boxed_excludes([rule_from_js(rule)?.into_exclude_rule()?])));
     }
 
     /// Every number is from min to max.  The same as rule(NumberRange.all(min, max)).
@@ -88,6 +99,19 @@ impl SettingsBuilder {
     #[wasm_bindgen(js_name = "oddEven")]
     pub fn odd_even(&self, odd: f64, even: f64) -> Result<SettingsBuilder, JsError> {
         return Ok(self.with(self.builder.clone().odd_even(to_usize(odd, "odd")?, to_usize(even, "even")?)));
+    }
+
+    /// Every result that matches the rules is equally likely.  The numbers are drawn at random, without the rules
+    /// steering them, and a ticket is started again as soon as a rule says it can not match.  Rules that only a few
+    /// tickets match take many draws: see maxDraws.
+    pub fn uniform(&self) -> SettingsBuilder {
+        return self.with(self.builder.clone().uniform());
+    }
+
+    /// With uniform, how many tickets to start before giving up.  1,000,000 without it.
+    #[wasm_bindgen(js_name = "maxDraws")]
+    pub fn max_draws(&self, max_draws: f64) -> Result<SettingsBuilder, JsError> {
+        return Ok(self.with(self.builder.clone().max_draws(to_usize(max_draws, "maxDraws")?)));
     }
 
     /// Uses this random number generator instead of DefaultRandom

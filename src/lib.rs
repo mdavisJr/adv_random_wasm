@@ -26,8 +26,8 @@ export type Pool = ArrayLike<number> | Iterable<number> | string | RangeInclusiv
 /** Indexes of the random numbers: a list like [0, 2, 4] or a range like range(2, 8).  The first number is index 0. */
 export type Indexes = ArrayLike<number> | Iterable<number> | RangeInclusive | { min: number, max: number };
 
-/** A rule for SettingsBuilder.rule and SettingsBuilder.exclude.  NoDuplicate can be passed without calling new. */
-export type Rule = NumberRange | NumberPool | NumberPoolByIndex | NoDuplicate | typeof NoDuplicate | OddEven | OddEvenByIndex | Sequential | NumberSpace | ExcludeNumberSets;
+/** A rule for SettingsBuilder.rule and SettingsBuilder.exclude.  NoDuplicate can be passed without calling new.  AnyOf can not be used with exclude. */
+export type Rule = NumberRange | NumberPool | NumberPoolByIndex | NoDuplicate | typeof NoDuplicate | OddEven | OddEvenByIndex | Sequential | NumberSpace | ExcludeNumberSets | AnyOf;
 
 /** Your own random number generator. */
 export interface RandomGenerator {
